@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+sqlalchemy = "*"
+toml = "*"
+speechrecognition = "*"
+pydub = "*"
+pocketsphinx = "*"
+numpy = "*"
+soundfile = "*"
+torchvision = "*"
+openai-whisper = "*"
+pytelegrambotapi = "*"
+
+[dev-packages]
+pytest = "*"
+blue = "*"
+isort = "*"
+ruff = "*"
+
+[requires]
+python_version = "3.11"
