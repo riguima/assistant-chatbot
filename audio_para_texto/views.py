@@ -20,7 +20,10 @@ def init_app(app):
                 )
                 user_model = session.scalars(query).first()
                 print(user_model)
-                if user_model and user_model.password == request.form['password']:
+                if (
+                    user_model
+                    and user_model.password == request.form['password']
+                ):
                     user_model.authenticated = True
                     session.commit()
                     login_user(user_model)

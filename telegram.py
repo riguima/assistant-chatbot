@@ -1,9 +1,10 @@
-import os
 from pathlib import Path
 
 import telebot
 
 from audio_para_texto.config import config
+from audio_para_texto.database import Session
+from audio_para_texto.models import TelegramMessage
 from audio_para_texto.utils import transcribe_audio
 
 bot = telebot.TeleBot(config['BOT_TOKEN'])
@@ -26,13 +27,20 @@ def on_audio(message):
     else:
         file_id = message.audio.file_id
     file_info = bot.get_file(file_id)
-    file_path = str(Path('audios') / file_info.file_path.split('/')[-1])
+    file_path = Path('static') / 'audios' / file_info.file_path.split('/')[-1]
     downloaded_file = bot.download_file(file_info.file_path)
     with open(file_path, 'wb') as f:
         f.write(downloaded_file)
-    bot.send_message(message.chat.id, transcribe_audio(file_path))
-    os.remove(file_path)
+    text = transcribe_audio(str(file_path))
+    bot.send_message(message.chat.id, text)
     bot.delete_message(message.chat.id, transcribing_message.id)
+    with Session() as session:
+        telegram_message = TelegramMessage(
+            audio_url=config['DOMAIN'] + f'/static/audios/{file_path.name}',
+            text=text,
+        )
+        session.add(telegram_message)
+        session.commit()
 
 
 if __name__ == '__main__':
