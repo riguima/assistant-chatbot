@@ -14,6 +14,11 @@ soundfile = "*"
 torchvision = "*"
 openai-whisper = "*"
 pytelegrambotapi = "*"
+flask = "*"
+flask-admin = "*"
+flask-login = "*"
+gunicorn = "*"
+flask-wtf = "*"
 
 [dev-packages]
 pytest = "*"

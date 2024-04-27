@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block content %}
+  {% if error_message %}
+    <div class="text-center alert alert-danger" role="alert">{{ error_message }}</div>
+  {% endif %}
+  <form method="post">
+    <h1 class="mb-3">Login</h1>
+    {% for field, errors in form.errors.items() %}
+      <div class="alert alert-error">
+        {{ form[field].label }}: {{ ', '.join(errors) }}
+      </div>
+    {% endfor %}
+    {{ form.csrf_token }}
+    <div class="mb-3">
+      {{ form.name.label(class_="form-label") }}
+      {{ form.name(class_="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.password.label(class_="form-label") }}
+      {{ form.password(class_="form-control") }}
+    </div>
+    <input class="btn btn-primary" type="submit" value="Entrar">
+  </form>
+{% endblock %}

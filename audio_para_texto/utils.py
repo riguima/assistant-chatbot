@@ -4,6 +4,7 @@ from pathlib import Path
 import speech_recognition as sr
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
+from speech_recognition.exceptions import UnknownValueError
 
 
 def transcribe_audio_chunk(path):
@@ -27,7 +28,10 @@ def transcribe_audio(path):
     for i, audio_chunk in enumerate(chunks, start=1):
         chunk_filename = Path(chunk_folder) / f'chunk{i}.wav'
         audio_chunk.export(str(chunk_filename), format='wav')
-        text = transcribe_audio_chunk(str(chunk_filename))
-        result += f'{text.capitalize()}. '
+        try:
+            text = transcribe_audio_chunk(str(chunk_filename))
+            result += f'{text.capitalize()}. '
+        except UnknownValueError:
+            continue
         os.remove(Path(chunk_folder) / chunk_filename.name)
     return result.strip()

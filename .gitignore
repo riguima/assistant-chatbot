@@ -4,6 +4,7 @@
 audios
 audio-chunks
 .config.toml
+*.db
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
