@@ -6,7 +6,7 @@ from httpx import get, post
 
 from audio_para_texto.database import Session
 from audio_para_texto.forms import LoginForm
-from audio_para_texto.models import User
+from audio_para_texto.models import User, WhatsappMessage
 from audio_para_texto.config import config
 from audio_para_texto.utils import transcribe_audio
 
@@ -74,6 +74,7 @@ def init_app(app):
                     'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
                 })
                 f.write(response.content)
+            result_text = transcribe_audio(str(audio_path))
             response = post('https://graph.facebook.com/v19.0/325664330621284/messages', headers={
                 'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
             }, json={
@@ -85,7 +86,15 @@ def init_app(app):
                 'type': 'text',
                 'text': {
                     'preview_url': False,
-                    'body': transcribe_audio(str(audio_path)),
+                    'body': result_text,
                 }
             })
+            with Session() as session:
+                whatsapp_message = WhatsappMessage(
+                    audio_url=config['DOMAIN'] + f'/static/audios/{audio_id}.mp3',
+                    text=result_text,
+                    phone_number=message['from'],
+                )
+                session.add(whatsapp_message)
+                session.commit()
         return jsonify({'status': 'ok'})

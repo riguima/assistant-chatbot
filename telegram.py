@@ -38,6 +38,7 @@ def on_audio(message):
         telegram_message = TelegramMessage(
             audio_url=config['DOMAIN'] + f'/static/audios/{file_path.name}',
             text=text,
+            user_id=str(message.chat.id),
         )
         session.add(telegram_message)
         session.commit()

@@ -38,6 +38,7 @@ class TelegramMessage(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     audio_url: Mapped[str]
     text: Mapped[str]
+    user_id: Mapped[str]
 
 
 class WhatsappMessage(Base):
@@ -45,6 +46,7 @@ class WhatsappMessage(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     audio_url: Mapped[str]
     text: Mapped[str]
+    phone_number: Mapped[str]
 
 
 Base.metadata.create_all(db)
