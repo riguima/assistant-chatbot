@@ -75,7 +75,7 @@ def init_app(app):
                 })
                 f.write(response.content)
             result_text = transcribe_audio(str(audio_path))
-            response = post('https://graph.facebook.com/v19.0/325664330621284/messages', headers={
+            response = post(f'https://graph.facebook.com/v19.0/{config["WHATSAPP_API_ACCOUNT_ID"]}/messages', headers={
                 'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
             }, json={
                 'messaging_product': 'whatsapp',
