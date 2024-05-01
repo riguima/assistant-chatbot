@@ -1,14 +1,15 @@
-from flask import redirect, render_template, request, url_for, jsonify
-from flask_login import current_user, login_user, logout_user
-from sqlalchemy import select
 from pathlib import Path
-from httpx import get, post
 
+from flask import jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_user, logout_user
+from httpx import get, post
+from sqlalchemy import select
+
+from audio_para_texto.config import config
 from audio_para_texto.database import Session
 from audio_para_texto.forms import LoginForm
 from audio_para_texto.models import User, WhatsappMessage
-from audio_para_texto.config import config
-from audio_para_texto.utils import transcribe_audio
+from audio_para_texto.utils import ask_chat_gpt, transcribe_audio
 
 
 def init_app(app):
@@ -60,44 +61,76 @@ def init_app(app):
 
     @app.route('/whatsapp-webhook', methods=['GET', 'POST'])
     def whatsapp_webhook():
-        if request.method == 'GET' and request.args.get('hub.challenge') and request.args.get('hub.verify_token') == config['WHATSAPP_API_TOKEN']:
+        if (
+            request.method == 'GET'
+            and request.args.get('hub.challenge')
+            and request.args.get('hub.verify_token')
+            == config['WHATSAPP_API_TOKEN']
+        ):
             return str(request.args['hub.challenge'])
         if request.json['entry'][0]['changes'][0]['value'].get('messages'):
-            message = request.json['entry'][0]['changes'][0]['value']['messages'][0]
+            message = request.json['entry'][0]['changes'][0]['value'][
+                'messages'
+            ][0]
         else:
             return jsonify({'status': 'ok'})
+        answer = None
         if message['type'] == 'audio':
             audio_id = message['audio']['id']
-            url = get(f'https://graph.facebook.com/v19.0/{audio_id}', headers={
-                'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
-            }).json()['url']
+            url = get(
+                f'https://graph.facebook.com/v19.0/{audio_id}',
+                headers={
+                    'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
+                },
+            ).json()['url']
             audio_path = Path('static') / 'audios' / f'{audio_id}.mp3'
             with open(audio_path, 'wb') as f:
-                response = get(url, headers={
-                    'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
-                })
+                response = get(
+                    url,
+                    headers={
+                        'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
+                    },
+                )
                 f.write(response.content)
-            result_text = transcribe_audio(str(audio_path))
-            response = post(f'https://graph.facebook.com/v19.0/{config["WHATSAPP_API_ACCOUNT_ID"]}/messages', headers={
-                'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
-            }, json={
-                'messaging_product': 'whatsapp',
-                'context': {
-                    'message_id': message['id'],
-                },
-                'to': message['from'],
-                'type': 'text',
-                'text': {
-                    'preview_url': False,
-                    'body': result_text,
-                }
-            })
+            text = transcribe_audio(str(audio_path))
+            answer = ask_chat_gpt(text)
             with Session() as session:
                 whatsapp_message = WhatsappMessage(
-                    audio_url=config['DOMAIN'] + f'/static/audios/{audio_id}.mp3',
-                    text=result_text,
+                    audio_url=config['DOMAIN']
+                    + f'/static/audios/{audio_id}.mp3',
+                    answer=answer,
+                    text=text,
                     phone_number=message['from'],
                 )
                 session.add(whatsapp_message)
                 session.commit()
+        elif message['type'] == 'text':
+            answer = message['text']['body']
+            with Session() as session:
+                whatsapp_message = WhatsappMessage(
+                    answer=answer,
+                    text=message['text']['body'],
+                    phone_number=message['from'],
+                )
+                session.add(whatsapp_message)
+                session.commit()
+        if answer:
+            post(
+                f'https://graph.facebook.com/v19.0/{config["WHATSAPP_API_ACCOUNT_ID"]}/messages',
+                headers={
+                    'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
+                },
+                json={
+                    'messaging_product': 'whatsapp',
+                    'context': {
+                        'message_id': message['id'],
+                    },
+                    'to': message['from'],
+                    'type': 'text',
+                    'text': {
+                        'preview_url': False,
+                        'body': answer,
+                    },
+                },
+            )
         return jsonify({'status': 'ok'})

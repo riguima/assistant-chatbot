@@ -2,9 +2,14 @@ import os
 from pathlib import Path
 
 import speech_recognition as sr
+from openai import OpenAI
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
 from speech_recognition.exceptions import UnknownValueError
+from sqlalchemy import select
+
+from audio_para_texto.database import Session
+from audio_para_texto.models import Configuration
 
 
 def transcribe_audio_chunk(path):
@@ -35,3 +40,25 @@ def transcribe_audio(path):
             continue
         os.remove(Path(chunk_folder) / chunk_filename.name)
     return result.strip()
+
+
+def ask_chat_gpt(question):
+    with Session() as session:
+        query = select(Configuration).where(
+            Configuration.name == 'openai_token'
+        )
+        openai_token = session.scalars(query).first()
+        if openai_token:
+            client = OpenAI(api_key=openai_token.value)
+            chat_completions = client.chat.completions.create(
+                messages=[
+                    {
+                        'role': 'assistant',
+                        'content': question,
+                    },
+                ],
+                model='gpt-4',
+            )
+            return chat_completions.choices[0].message.content
+        else:
+            return ''

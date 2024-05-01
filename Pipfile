@@ -4,27 +4,25 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-sqlalchemy = "*"
+flask = "*"
+flask-wtf = "*"
+flask-babelex = "*"
+flask-login = "*"
+flask-admin = "*"
 toml = "*"
+sqlalchemy = "*"
+httpx = "*"
 speechrecognition = "*"
 pydub = "*"
-pocketsphinx = "*"
-numpy = "*"
-soundfile = "*"
-torchvision = "*"
-openai-whisper = "*"
 pytelegrambotapi = "*"
-flask = "*"
-flask-admin = "*"
-flask-login = "*"
-gunicorn = "*"
-flask-wtf = "*"
+pytz = "*"
+openai = "*"
 
 [dev-packages]
-pytest = "*"
 blue = "*"
 isort = "*"
 ruff = "*"
 
 [requires]
 python_version = "3.11"
+python_full_version = "3.11.9"

@@ -5,7 +5,7 @@ import telebot
 from audio_para_texto.config import config
 from audio_para_texto.database import Session
 from audio_para_texto.models import TelegramMessage
-from audio_para_texto.utils import transcribe_audio
+from audio_para_texto.utils import ask_chat_gpt, transcribe_audio
 
 bot = telebot.TeleBot(config['BOT_TOKEN'])
 bot.set_webhook()
@@ -33,12 +33,28 @@ def on_audio(message):
     with open(file_path, 'wb') as f:
         f.write(downloaded_file)
     text = transcribe_audio(str(file_path))
-    bot.send_message(message.chat.id, text)
+    answer = ask_chat_gpt(text)
+    bot.send_message(message.chat.id, answer)
     bot.delete_message(message.chat.id, transcribing_message.id)
     with Session() as session:
         telegram_message = TelegramMessage(
             audio_url=config['DOMAIN'] + f'/static/audios/{file_path.name}',
             text=text,
+            answer=answer,
+            user_id=str(message.chat.id),
+        )
+        session.add(telegram_message)
+        session.commit()
+
+
+@bot.message_handler(content_types=['text'])
+def on_text(message):
+    answer = ask_chat_gpt(message.text)
+    bot.send_message(message.chat.id, answer)
+    with Session() as session:
+        telegram_message = TelegramMessage(
+            text=message.text,
+            answer=answer,
             user_id=str(message.chat.id),
         )
         session.add(telegram_message)

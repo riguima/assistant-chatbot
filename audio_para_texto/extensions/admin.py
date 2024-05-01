@@ -4,7 +4,8 @@ from flask_admin.contrib.sqla import ModelView
 from flask_login import current_user
 
 from audio_para_texto.database import Session
-from audio_para_texto.models import TelegramMessage, WhatsappMessage
+from audio_para_texto.models import (Configuration, TelegramMessage,
+                                     WhatsappMessage)
 
 
 class AdminModelView(ModelView):
@@ -18,5 +19,6 @@ class AdminModelView(ModelView):
 def init_app(app):
     admin = Admin(app, name='admin')
     session = Session()
+    admin.add_view(AdminModelView(Configuration, session))
     admin.add_view(AdminModelView(TelegramMessage, session))
     admin.add_view(AdminModelView(WhatsappMessage, session))
