@@ -58,11 +58,14 @@ def init_app(app):
         logout_user()
         return redirect(url_for('login'))
 
-    @app.route('/', methods=['GET', 'POST'])
-    def test_whatsapp():
+    @app.route('/whatsapp-webhook', methods=['GET', 'POST'])
+    def whatsapp_webhook():
         if request.method == 'GET' and request.args.get('hub.challenge') and request.args.get('hub.verify_token') == config['WHATSAPP_API_TOKEN']:
             return str(request.args['hub.challenge'])
-        message = request.json['entry'][0]['changes'][0]['value']['messages'][0]
+        if request.json['entry'][0]['changes'][0]['value'].get('messages'):
+            message = request.json['entry'][0]['changes'][0]['value']['messages'][0]
+        else:
+            return jsonify({'status': 'ok'})
         if message['type'] == 'audio':
             audio_id = message['audio']['id']
             url = get(f'https://graph.facebook.com/v19.0/{audio_id}', headers={

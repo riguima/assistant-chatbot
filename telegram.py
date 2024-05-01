@@ -8,6 +8,7 @@ from audio_para_texto.models import TelegramMessage
 from audio_para_texto.utils import transcribe_audio
 
 bot = telebot.TeleBot(config['BOT_TOKEN'])
+bot.set_webhook()
 
 
 @bot.message_handler(commands=['help', 'start'])
