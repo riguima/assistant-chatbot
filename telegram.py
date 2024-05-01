@@ -14,7 +14,7 @@ bot.set_webhook()
 @bot.message_handler(commands=['help', 'start'])
 def send_welcome(message):
     bot.send_message(
-        message.chat.id, 'Envie qualquer áudio para transcrever para texto'
+        message.chat.id, 'Envie qualquer pergunta em texto ou áudio'
     )
 
 
