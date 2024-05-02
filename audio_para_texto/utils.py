@@ -71,14 +71,6 @@ def ask_chat_gpt(question, thread_id):
                     messages = client.beta.threads.messages.list(
                         thread_id=thread_id
                     )
-                    result = ''
-                    for message in reversed(messages.data):
-                        for content in message.content:
-                            if content.type == 'text':
-                                if result:
-                                    result += f'\n{content.text.value}'
-                                else:
-                                    result += content.text.value
-                    return result, thread_id
+                    return messages.data[0].content[0].text.value, thread_id
         else:
             return '', thread_id
