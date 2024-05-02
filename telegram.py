@@ -5,11 +5,14 @@ from sqlalchemy import select
 
 from audio_para_texto.config import config
 from audio_para_texto.database import Session
-from audio_para_texto.models import TelegramMessage
+from audio_para_texto.models import Configuration, TelegramMessage
 from audio_para_texto.utils import ask_chat_gpt, transcribe_audio
 
-bot = telebot.TeleBot(config['BOT_TOKEN'])
-bot.set_webhook()
+with Session() as session:
+    query = select(Configuration).where(Configuration.name == 'telegram_token')
+    telegram_token = session.scalars(query).first()
+    bot = telebot.TeleBot(telegram_token.value)
+    bot.set_webhook()
 
 
 @bot.message_handler(commands=['help', 'start'])

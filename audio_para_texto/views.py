@@ -8,7 +8,7 @@ from sqlalchemy import select
 from audio_para_texto.config import config
 from audio_para_texto.database import Session
 from audio_para_texto.forms import LoginForm
-from audio_para_texto.models import User, WhatsappMessage
+from audio_para_texto.models import Configuration, User, WhatsappMessage
 from audio_para_texto.utils import ask_chat_gpt, transcribe_audio
 
 
@@ -62,11 +62,26 @@ def init_app(app):
 
     @app.route('/whatsapp-webhook', methods=['GET', 'POST'])
     def whatsapp_webhook():
+        with Session() as session:
+            query = select(Configuration).where(
+                Configuration.name == 'whatsapp_token'
+            )
+            whatsapp_token = session.scalars(query).first()
+            query = select(Configuration).where(
+                Configuration.name == 'whatsapp_access_token'
+            )
+            whatsapp_access_token = session.scalars(query).first()
+            query = select(Configuration).where(
+                Configuration.name == 'whatsapp_account_id'
+            )
+            whatsapp_account_id = session.scalars(query).first()
+        whatsapp_headers = {
+            'Authorization': f'Bearer {whatsapp_access_token.value}'
+        }
         if (
             request.method == 'GET'
             and request.args.get('hub.challenge')
-            and request.args.get('hub.verify_token')
-            == config['WHATSAPP_API_TOKEN']
+            and request.args.get('hub.verify_token') == whatsapp_token.value
         ):
             return str(request.args['hub.challenge'])
         if request.json['entry'][0]['changes'][0]['value'].get('messages'):
@@ -88,18 +103,11 @@ def init_app(app):
             audio_id = message['audio']['id']
             url = get(
                 f'https://graph.facebook.com/v19.0/{audio_id}',
-                headers={
-                    'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
-                },
+                headers=whatsapp_headers,
             ).json()['url']
             audio_path = Path('static') / 'audios' / f'{audio_id}.mp3'
             with open(audio_path, 'wb') as f:
-                response = get(
-                    url,
-                    headers={
-                        'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
-                    },
-                )
+                response = get(url, headers=whatsapp_headers)
                 f.write(response.content)
             text = transcribe_audio(str(audio_path))
             answer, thread_id = ask_chat_gpt(text, thread_id)
@@ -129,10 +137,8 @@ def init_app(app):
                 session.commit()
         if answer:
             post(
-                f'https://graph.facebook.com/v19.0/{config["WHATSAPP_API_ACCOUNT_ID"]}/messages',
-                headers={
-                    'Authorization': f'Bearer {config["WHATSAPP_API_ACCESS_TOKEN"]}'
-                },
+                f'https://graph.facebook.com/v19.0/{whatsapp_account_id.value}/messages',
+                headers=whatsapp_headers,
                 json={
                     'messaging_product': 'whatsapp',
                     'context': {
