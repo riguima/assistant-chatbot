@@ -27,6 +27,7 @@ def init_app(app):
                 if (
                     user_model
                     and user_model.password == request.form['password']
+                    and user_model.is_admin
                 ):
                     user_model.authenticated = True
                     session.commit()
@@ -75,6 +76,14 @@ def init_app(app):
         else:
             return jsonify({'status': 'ok'})
         answer = None
+        with Session() as session:
+            query = select(WhatsappMessage).where(
+                WhatsappMessage.phone_number == message['from']
+            )
+            message_model = session.scalars(query).first()
+            thread_id = (
+                None if message_model is None else message_model.thread_id
+            )
         if message['type'] == 'audio':
             audio_id = message['audio']['id']
             url = get(
@@ -93,7 +102,7 @@ def init_app(app):
                 )
                 f.write(response.content)
             text = transcribe_audio(str(audio_path))
-            answer = ask_chat_gpt(text)
+            answer, thread_id = ask_chat_gpt(text, thread_id)
             with Session() as session:
                 whatsapp_message = WhatsappMessage(
                     audio_url=config['DOMAIN']
@@ -101,16 +110,20 @@ def init_app(app):
                     answer=answer,
                     text=text,
                     phone_number=message['from'],
+                    thread_id=thread_id,
                 )
                 session.add(whatsapp_message)
                 session.commit()
         elif message['type'] == 'text':
-            answer = message['text']['body']
+            answer, thread_id = ask_chat_gpt(
+                message['text']['body'], thread_id
+            )
             with Session() as session:
                 whatsapp_message = WhatsappMessage(
                     answer=answer,
                     text=message['text']['body'],
                     phone_number=message['from'],
+                    thread_id=thread_id,
                 )
                 session.add(whatsapp_message)
                 session.commit()

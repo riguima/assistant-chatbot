@@ -17,6 +17,7 @@ pydub = "*"
 pytelegrambotapi = "*"
 pytz = "*"
 openai = "*"
+whisper = "*"
 
 [dev-packages]
 blue = "*"

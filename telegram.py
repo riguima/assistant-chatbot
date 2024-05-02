@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import telebot
+from sqlalchemy import select
 
 from audio_para_texto.config import config
 from audio_para_texto.database import Session
@@ -20,6 +21,12 @@ def send_welcome(message):
 
 @bot.message_handler(content_types=['voice', 'audio'])
 def on_audio(message):
+    with Session() as session:
+        query = select(TelegramMessage).where(
+            TelegramMessage.user_id == str(message.chat.id)
+        )
+        message_model = session.scalars(query).first()
+        thread_id = None if message_model is None else message_model.thread_id
     transcribing_message = bot.send_message(
         message.chat.id, 'Transcrevendo áudio...'
     )
@@ -33,7 +40,7 @@ def on_audio(message):
     with open(file_path, 'wb') as f:
         f.write(downloaded_file)
     text = transcribe_audio(str(file_path))
-    answer = ask_chat_gpt(text)
+    answer, thread_id = ask_chat_gpt(text, thread_id)
     bot.send_message(message.chat.id, answer)
     bot.delete_message(message.chat.id, transcribing_message.id)
     with Session() as session:
@@ -42,6 +49,7 @@ def on_audio(message):
             text=text,
             answer=answer,
             user_id=str(message.chat.id),
+            thread_id=thread_id,
         )
         session.add(telegram_message)
         session.commit()
@@ -49,13 +57,20 @@ def on_audio(message):
 
 @bot.message_handler(content_types=['text'])
 def on_text(message):
-    answer = ask_chat_gpt(message.text)
+    with Session() as session:
+        query = select(TelegramMessage).where(
+            TelegramMessage.user_id == str(message.chat.id)
+        )
+        message_model = session.scalars(query).first()
+        thread_id = None if message_model is None else message_model.thread_id
+    answer, thread_id = ask_chat_gpt(message.text, thread_id)
     bot.send_message(message.chat.id, answer)
     with Session() as session:
         telegram_message = TelegramMessage(
             text=message.text,
             answer=answer,
             user_id=str(message.chat.id),
+            thread_id=thread_id,
         )
         session.add(telegram_message)
         session.commit()

@@ -42,7 +42,7 @@ def transcribe_audio(path):
     return result.strip()
 
 
-def ask_chat_gpt(question):
+def ask_chat_gpt(question, thread_id):
     with Session() as session:
         query = select(Configuration).where(
             Configuration.name == 'openai_token'
@@ -50,15 +50,35 @@ def ask_chat_gpt(question):
         openai_token = session.scalars(query).first()
         if openai_token:
             client = OpenAI(api_key=openai_token.value)
-            chat_completions = client.chat.completions.create(
-                messages=[
-                    {
-                        'role': 'assistant',
-                        'content': question,
-                    },
-                ],
-                model='gpt-4',
-            )
-            return chat_completions.choices[0].message.content
+            with Session() as session:
+                query = select(Configuration).where(
+                    Configuration.name == 'assistant_id'
+                )
+                assistant = session.scalars(query).first()
+                if assistant:
+                    if thread_id is None:
+                        thread = client.beta.threads.create()
+                        thread_id = thread.id
+                    client.beta.threads.messages.create(
+                        thread_id=thread_id,
+                        role='assistant',
+                        content=question,
+                    )
+                    client.beta.threads.runs.create_and_poll(
+                        thread_id=thread_id,
+                        assistant_id=assistant.value,
+                    )
+                    messages = client.beta.threads.messages.list(
+                        thread_id=thread_id
+                    )
+                    result = ''
+                    for message in reversed(messages.data):
+                        for content in message.content:
+                            if content.type == 'text':
+                                if result:
+                                    result += f'\n{content.text.value}'
+                                else:
+                                    result += content.text.value
+                    return result, thread_id
         else:
-            return ''
+            return '', thread_id
