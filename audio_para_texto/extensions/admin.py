@@ -16,9 +16,17 @@ class AdminModelView(ModelView):
         return redirect(url_for('login'))
 
 
+class TelegramModelView(AdminModelView):
+    column_searchable_list = ['user_id']
+
+
+class WhatsappModelView(AdminModelView):
+    column_searchable_list = ['phone_number']
+
+
 def init_app(app):
     admin = Admin(app, name='admin')
     session = Session()
     admin.add_view(AdminModelView(Configuration, session))
-    admin.add_view(AdminModelView(TelegramMessage, session))
-    admin.add_view(AdminModelView(WhatsappMessage, session))
+    admin.add_view(TelegramModelView(TelegramMessage, session))
+    admin.add_view(WhatsappModelView(WhatsappMessage, session))
