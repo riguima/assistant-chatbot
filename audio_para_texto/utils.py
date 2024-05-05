@@ -44,6 +44,7 @@ def transcribe_audio(path):
 
 def ask_chat_gpt(question, message_model):
     thread_id = None if message_model is None else message_model.thread_id
+    assistant_id = None if message_model is None else message_model.assistant_id
     with Session() as session:
         query = select(Configuration).where(
             Configuration.name == 'assistant_id'
@@ -55,7 +56,7 @@ def ask_chat_gpt(question, message_model):
         openai_token = session.scalars(query).first()
         if openai_token and assistant_model:
             client = OpenAI(api_key=openai_token.value)
-            if message_model.assistant_id != assistant_model.value:
+            if assistant_id != assistant_model.value:
                 thread_id = None
             assistant = client.beta.assistants.retrieve(assistant_model.value)
             if thread_id is None:
