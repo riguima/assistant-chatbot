@@ -65,8 +65,7 @@ def on_text(message):
             TelegramMessage.user_id == str(message.chat.id)
         )
         message_model = session.scalars(query).first()
-        thread_id = None if message_model is None else message_model.thread_id
-    answer, thread_id = ask_chat_gpt(message.text, thread_id)
+    answer, thread_id, assistant_id = ask_chat_gpt(message.text, message_model)
     bot.send_message(message.chat.id, answer)
     with Session() as session:
         telegram_message = TelegramMessage(
@@ -74,6 +73,7 @@ def on_text(message):
             answer=answer,
             user_id=str(message.chat.id),
             thread_id=thread_id,
+            assistant_id=assistant_id,
         )
         session.add(telegram_message)
         session.commit()
