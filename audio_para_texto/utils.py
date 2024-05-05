@@ -54,19 +54,20 @@ def ask_chat_gpt(question, thread_id):
                 query = select(Configuration).where(
                     Configuration.name == 'assistant_id'
                 )
-                assistant = session.scalars(query).first()
-                if assistant:
+                assistant_model = session.scalars(query).first()
+                if assistant_model:
+                    assistant = client.beta.assistants.retrieve(assistant_model.value)
                     if thread_id is None:
                         thread = client.beta.threads.create()
                         thread_id = thread.id
                     client.beta.threads.messages.create(
                         thread_id=thread_id,
-                        role='assistant',
+                        role='user',
                         content=question,
                     )
-                    client.beta.threads.runs.create_and_poll(
+                    run = client.beta.threads.runs.create_and_poll(
                         thread_id=thread_id,
-                        assistant_id=assistant.value,
+                        assistant_id=assistant.id,
                     )
                     messages = client.beta.threads.messages.list(
                         thread_id=thread_id
