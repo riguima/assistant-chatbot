@@ -42,36 +42,39 @@ def transcribe_audio(path):
     return result.strip()
 
 
-def ask_chat_gpt(question, thread_id):
+def ask_chat_gpt(question, message_model):
+    thread_id = None if message_model is None else message_model.thread_id
     with Session() as session:
+        query = select(Configuration).where(
+            Configuration.name == 'assistant_id'
+        )
+        assistant_model = session.scalars(query).first()
         query = select(Configuration).where(
             Configuration.name == 'openai_token'
         )
         openai_token = session.scalars(query).first()
-        if openai_token:
+        if openai_token and assistant_model:
             client = OpenAI(api_key=openai_token.value)
-            with Session() as session:
-                query = select(Configuration).where(
-                    Configuration.name == 'assistant_id'
-                )
-                assistant_model = session.scalars(query).first()
-                if assistant_model:
-                    assistant = client.beta.assistants.retrieve(assistant_model.value)
-                    if thread_id is None:
-                        thread = client.beta.threads.create()
-                        thread_id = thread.id
-                    client.beta.threads.messages.create(
-                        thread_id=thread_id,
-                        role='user',
-                        content=question,
-                    )
-                    run = client.beta.threads.runs.create_and_poll(
-                        thread_id=thread_id,
-                        assistant_id=assistant.id,
-                    )
-                    messages = client.beta.threads.messages.list(
-                        thread_id=thread_id
-                    )
-                    return messages.data[0].content[0].text.value, thread_id
+            if message_model.assistant_id != assistant_model.value:
+                thread_id = None
+            assistant = client.beta.assistants.retrieve(assistant_model.value)
+            if thread_id is None:
+                thread = client.beta.threads.create()
+                thread_id = thread.id
+            client.beta.threads.messages.create(
+                thread_id=thread_id,
+                role='user',
+                content=question,
+            )
+            client.beta.threads.runs.create_and_poll(
+                thread_id=thread_id,
+                assistant_id=assistant.id,
+            )
+            messages = client.beta.threads.messages.list(
+                thread_id=thread_id
+            )
+            return messages.data[0].content[0].text.value, thread_id, assistant_model.value
+        elif assistant_model is None:
+            return '', thread_id, None
         else:
-            return '', thread_id
+            return '', thread_id, assistant_model.value

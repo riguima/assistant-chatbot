@@ -29,7 +29,6 @@ def on_audio(message):
             TelegramMessage.user_id == str(message.chat.id)
         )
         message_model = session.scalars(query).first()
-        thread_id = None if message_model is None else message_model.thread_id
     transcribing_message = bot.send_message(
         message.chat.id, 'Transcrevendo áudio...'
     )
@@ -43,7 +42,7 @@ def on_audio(message):
     with open(file_path, 'wb') as f:
         f.write(downloaded_file)
     text = transcribe_audio(str(file_path))
-    answer, thread_id = ask_chat_gpt(text, thread_id)
+    answer, thread_id, assistant_id = ask_chat_gpt(text, message_model)
     bot.send_message(message.chat.id, answer)
     bot.delete_message(message.chat.id, transcribing_message.id)
     with Session() as session:
@@ -53,6 +52,7 @@ def on_audio(message):
             answer=answer,
             user_id=str(message.chat.id),
             thread_id=thread_id,
+            assistant_id=assistant_id,
         )
         session.add(telegram_message)
         session.commit()

@@ -96,9 +96,6 @@ def init_app(app):
                 WhatsappMessage.phone_number == message['from']
             )
             message_model = session.scalars(query).first()
-            thread_id = (
-                None if message_model is None else message_model.thread_id
-            )
         if message['type'] == 'audio':
             audio_id = message['audio']['id']
             url = get(
@@ -110,7 +107,7 @@ def init_app(app):
                 response = get(url, headers=whatsapp_headers)
                 f.write(response.content)
             text = transcribe_audio(str(audio_path))
-            answer, thread_id = ask_chat_gpt(text, thread_id)
+            answer, thread_id, assistant_id = ask_chat_gpt(text, message_model)
             with Session() as session:
                 whatsapp_message = WhatsappMessage(
                     audio_url=config['DOMAIN']
@@ -119,12 +116,13 @@ def init_app(app):
                     text=text,
                     phone_number=message['from'],
                     thread_id=thread_id,
+                    assistant_id=assistant_id,
                 )
                 session.add(whatsapp_message)
                 session.commit()
         elif message['type'] == 'text':
-            answer, thread_id = ask_chat_gpt(
-                message['text']['body'], thread_id
+            answer, thread_id, assistant_id = ask_chat_gpt(
+                message['text']['body'], message_model
             )
             with Session() as session:
                 whatsapp_message = WhatsappMessage(
@@ -132,6 +130,7 @@ def init_app(app):
                     text=message['text']['body'],
                     phone_number=message['from'],
                     thread_id=thread_id,
+                    assistant_id=assistant_id,
                 )
                 session.add(whatsapp_message)
                 session.commit()

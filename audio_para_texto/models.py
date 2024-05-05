@@ -48,6 +48,7 @@ class TelegramMessage(Base):
     answer: Mapped[str]
     user_id: Mapped[str]
     thread_id: Mapped[str]
+    assistant_id: Mapped[str]
     create_datetime: Mapped[Optional[datetime]] = mapped_column(
         default=get_now()
     )
@@ -61,6 +62,7 @@ class WhatsappMessage(Base):
     answer: Mapped[str]
     phone_number: Mapped[str]
     thread_id: Mapped[str]
+    assistant_id: Mapped[str]
     create_datetime: Mapped[Optional[datetime]] = mapped_column(
         default=get_now()
     )
